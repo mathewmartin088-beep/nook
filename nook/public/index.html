@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nook</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>nook</h1>
+      <p class="subtitle">a cozy space to connect</p>
+    </header>
+    
+    <div id="login-screen" class="screen">
+      <input type="text" id="username-input" placeholder="choose a name..." maxlength="15" autocomplete="off">
+      <button id="join-btn">enter nook</button>
+    </div>
+
+    <div id="chat-screen" class="screen hidden">
+      <div id="messages-container"></div>
+      <div id="typing-indicator" class="hidden">someone is typing...</div>
+      <form id="message-form">
+        <input type="text" id="message-input" placeholder="type a message..." autocomplete="off">
+        <button type="submit">send</button>
+      </form>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

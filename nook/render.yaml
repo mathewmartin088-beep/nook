@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: nook-messaging
+    env: node
+    region: oregon # or your preferred region
+    plan: free # or starter
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
