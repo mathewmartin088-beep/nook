@@ -7,26 +7,80 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <header>
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-box">
       <h1>nook</h1>
-      <p class="subtitle">a cozy space to connect</p>
-    </header>
-    
-    <div id="login-screen" class="screen">
-      <input type="text" id="username-input" placeholder="choose a name..." maxlength="15" autocomplete="off">
-      <button id="join-btn">enter nook</button>
-    </div>
-
-    <div id="chat-screen" class="screen hidden">
-      <div id="messages-container"></div>
-      <div id="typing-indicator" class="hidden">someone is typing...</div>
-      <form id="message-form">
-        <input type="text" id="message-input" placeholder="type a message..." autocomplete="off">
-        <button type="submit">send</button>
-      </form>
+      <p>your cozy corner of the internet</p>
+      <input type="text" id="auth-username" placeholder="username">
+      <input type="password" id="auth-password" placeholder="password">
+      <div class="auth-btns">
+        <button id="login-btn">login</button>
+        <button id="register-btn" class="secondary">register</button>
+      </div>
     </div>
   </div>
+
+  <!-- MAIN APP SCREEN -->
+  <div id="app-screen" class="screen">
+    <!-- Far Left Nav -->
+    <nav class="nav-bar">
+      <div class="nav-icon active" data-view="friends">👥</div>
+      <div class="nav-icon" data-view="nooks">🏡</div>
+      <div class="nav-icon" data-view="settings" id="dev-settings-btn" style="display:none;">⚙️</div>
+    </nav>
+
+    <!-- Second Column (Lists) -->
+    <aside class="sidebar">
+      <div id="friends-view" class="sidebar-view active">
+        <h3>Friends</h3>
+        <input type="text" id="add-friend-input" placeholder="add friend by name...">
+        <button id="add-friend-btn">Send Request</button>
+        <ul id="friends-list"></ul>
+      </div>
+      <div id="nooks-view" class="sidebar-view">
+        <h3>Nooks (Groups)</h3>
+        <input type="text" id="create-nook-input" placeholder="create a nook...">
+        <button id="create-nook-btn">Create</button>
+        <ul id="nooks-list"></ul>
+      </div>
+      <div id="settings-view" class="sidebar-view">
+        <h3>Dev Settings</h3>
+        <p class="subtext">Update Donate Link</p>
+        <input type="text" id="donate-link-input" placeholder="https://...">
+        <button id="update-donate-btn">Update Link</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content">
+      <header class="content-header">
+        <h2 id="current-view-title">Friends</h2>
+        <button id="call-btn" class="icon-btn" title="Call someone">📞</button>
+      </header>
+      <div id="messages-area">
+        <p class="placeholder-text">Select a friend or nook to start chatting.</p>
+      </div>
+      <form id="message-form" style="display:none;">
+        <input type="text" id="message-input" placeholder="Send a cozy message...">
+        <button type="submit">Send</button>
+      </form>
+    </main>
+
+    <!-- Right Widget -->
+    <aside class="widget-bar">
+      <div class="donate-widget">
+        <h4>☕ Support Nook</h4>
+        <p>Keep the nook cozy!</p>
+        <a id="donate-link" href="#" target="_blank">Donate Here</a>
+      </div>
+      <div class="online-users">
+        <h4>Online</h4>
+        <ul id="online-list"></ul>
+      </div>
+    </aside>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
