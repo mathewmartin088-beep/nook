@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
@@ -13,75 +13,103 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'nook_super_secret_cozy_key';
-const DB_FILE = 'db.json';
 
-// --- JSON DATABASE SETUP ---
-let db = { users: [], friends: [], nooks: [], nook_members: [], settings: [], messages: [] };
+// --- POSTGRESQL DATABASE SETUP ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-if (fs.existsSync(DB_FILE)) {
-  db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-} else {
-  // Seed "mathew" as the dev user
-  const hash = bcrypt.hashSync('devpassword123', 10);
-  db.users.push({ id: 1, username: 'mathew', password: hash, is_dev: 1 });
-  db.settings.push({ key: 'donate_link', value: 'https://sociabuzz.com/donationnk/tribe' });
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+// Initialize Tables and Seed Data
+async function initDB() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE, password TEXT, is_dev INTEGER DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS friends (user_id INTEGER, friend_id INTEGER, status TEXT DEFAULT 'pending');
+      CREATE TABLE IF NOT EXISTS nooks (id SERIAL PRIMARY KEY, name TEXT, owner_id INTEGER);
+      CREATE TABLE IF NOT EXISTS nook_members (nook_id INTEGER, user_id INTEGER, role TEXT DEFAULT 'member');
+      CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+      CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, nook_id INTEGER, channel_name TEXT, user_id INTEGER, text TEXT, timestamp BIGINT);
+    `);
+    
+    // Seed Mathew
+    const mathew = await pool.query('SELECT * FROM users WHERE username = $1', ['mathew']);
+    if (mathew.rows.length === 0) {
+      const hash = bcrypt.hashSync('devpassword123', 10);
+      await pool.query('INSERT INTO users (username, password, is_dev) VALUES ($1, $2, $3)', ['mathew', hash, 1]);
+      console.log('🌿 Seeded dev user: mathew');
+    }
+
+    // Seed Donate Link
+    const link = await pool.query('SELECT * FROM settings WHERE key = $1', ['donate_link']);
+    if (link.rows.length === 0) {
+      await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2)', ['donate_link', 'https://ko-fi.com/default']);
+    }
+    console.log('🌿 Database initialized and ready.');
+  } catch (err) {
+    console.error('❌ Database initialization failed:', err);
+    process.exit(1);
+  }
 }
 
-function saveDB() {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
-function getNextId(arr) {
-  return arr.length > 0 ? Math.max(...arr.map(i => i.id)) + 1 : 1;
-}
+initDB();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- AUTH ROUTES ---
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
-  if (db.users.find(u => u.username === username)) return res.status(400).json({ error: 'Username taken' });
+  
+  const exists = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+  if (exists.rows.length > 0) return res.status(400).json({ error: 'Username taken' });
 
   const hash = bcrypt.hashSync(password, 10);
-  const newUser = { id: getNextId(db.users), username, password: hash, is_dev: 0 };
-  db.users.push(newUser);
-  saveDB();
+  const result = await pool.query(
+    'INSERT INTO users (username, password, is_dev) VALUES ($1, $2, $3) RETURNING id, username, is_dev',
+    [username, hash, 0]
+  );
   
-  const token = jwt.sign({ id: newUser.id, username: newUser.username, is_dev: 0 }, JWT_SECRET);
-  res.json({ token, user: { id: newUser.id, username: newUser.username, is_dev: 0 } });
+  const newUser = result.rows[0];
+  const token = jwt.sign({ id: newUser.id, username: newUser.username, is_dev: newUser.is_dev }, JWT_SECRET);
+  res.json({ token, user: newUser });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = db.users.find(u => u.username === username);
+  const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+  const user = result.rows[0];
+  
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
+  
   const token = jwt.sign({ id: user.id, username: user.username, is_dev: user.is_dev }, JWT_SECRET);
   res.json({ token, user: { id: user.id, username: user.username, is_dev: user.is_dev } });
 });
 
-// --- SETTINGS ROUTE ---
-app.get('/api/settings', (req, res) => {
-  const link = db.settings.find(s => s.key === 'donate_link');
-  res.json({ donate_link: link ? link.value : '#' });
+// --- SETTINGS ROUTES ---
+app.get('/api/settings', async (req, res) => {
+  const result = await pool.query('SELECT value FROM settings WHERE key = $1', ['donate_link']);
+  res.json({ donate_link: result.rows[0]?.value || '#' });
 });
 
-app.post('/api/settings/donate', (req, res) => {
+app.post('/api/settings/donate', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (!decoded.is_dev) return res.status(403).json({ error: 'Mathew only!' });
     
-    const setting = db.settings.find(s => s.key === 'donate_link');
-    if (setting) setting.value = req.body.link;
-    saveDB();
+    await pool.query(
+      'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+      ['donate_link', req.body.link]
+    );
     io.emit('donateLinkUpdated', req.body.link);
     res.json({ success: true });
-  } catch (e) { res.status(401).json({ error: 'Invalid token' }); }
+  } catch (e) { 
+    res.status(401).json({ error: 'Invalid token' }); 
+  }
 });
 
 // --- SOCKET LOGIC ---
@@ -92,7 +120,9 @@ io.use((socket, next) => {
   try {
     socket.user = jwt.verify(token, JWT_SECRET);
     next();
-  } catch (err) { next(new Error('Invalid token')); }
+  } catch (err) { 
+    next(new Error('Invalid token')); 
+  }
 });
 
 io.on('connection', (socket) => {
@@ -100,38 +130,45 @@ io.on('connection', (socket) => {
   activeUsers.set(socket.id, socket.user);
   io.emit('userList', Array.from(activeUsers.values()));
 
-  socket.on('sendFriendRequest', (friendName) => {
-    const friend = db.users.find(u => u.username === friendName);
-    if (friend && friend.id !== socket.user.id) {
-      const exists = db.friends.find(f => f.user_id === socket.user.id && f.friend_id === friend.id);
-      if (!exists) {
-        db.friends.push({ user_id: socket.user.id, friend_id: friend.id, status: 'pending' });
-        saveDB();
+  socket.on('sendFriendRequest', async (friendName) => {
+    const friend = await pool.query('SELECT * FROM users WHERE username = $1', [friendName]);
+    if (friend.rows.length > 0 && friend.rows[0].id !== socket.user.id) {
+      const exists = await pool.query('SELECT * FROM friends WHERE user_id = $1 AND friend_id = $2', [socket.user.id, friend.rows[0].id]);
+      if (exists.rows.length === 0) {
+        await pool.query('INSERT INTO friends (user_id, friend_id, status) VALUES ($1, $2, $3)', [socket.user.id, friend.rows[0].id, 'pending']);
       }
-      io.emit('friendRequest', { from: socket.user.username, to: friend.username });
+      io.emit('friendRequest', { from: socket.user.username, to: friend.rows[0].username });
     }
   });
 
-  socket.on('createNook', (nookName) => {
-    const newNook = { id: getNextId(db.nooks), name: nookName, owner_id: socket.user.id };
-    db.nooks.push(newNook);
-    db.nook_members.push({ nook_id: newNook.id, user_id: socket.user.id, role: 'owner' });
-    saveDB();
+  socket.on('createNook', async (nookName) => {
+    const result = await pool.query(
+      'INSERT INTO nooks (name, owner_id) VALUES ($1, $2) RETURNING id, name, owner_id',
+      [nookName, socket.user.id]
+    );
+    const newNook = result.rows[0];
+    await pool.query('INSERT INTO nook_members (nook_id, user_id, role) VALUES ($1, $2, $3)', [newNook.id, socket.user.id, 'owner']);
     io.emit('nookCreated', newNook);
   });
 
-  socket.on('sendNookMessage', (data) => {
-    const msg = { id: getNextId(db.messages), nookId: data.nookId, channel: data.channel, user: socket.user.username, text: data.text, timestamp: Date.now() };
-    db.messages.push(msg);
-    saveDB();
+  socket.on('sendNookMessage', async (data) => {
+    const result = await pool.query(
+      'INSERT INTO messages (nook_id, channel_name, user_id, text, timestamp) VALUES ($1, $2, $3, $4, $5) RETURNING id, nook_id, channel_name, text, timestamp',
+      [data.nookId, data.channel, socket.user.id, data.text, Date.now()]
+    );
+    const msg = { ...result.rows[0], user: socket.user.username };
     io.to(`nook_${data.nookId}`).emit('newNookMessage', msg);
   });
 
-  socket.on('joinNook', (nookId) => { socket.join(`nook_${nookId}`); });
+  socket.on('joinNook', (nookId) => { 
+    socket.join(`nook_${nookId}`); 
+  });
 
   socket.on('initiateCall', (targetUserId) => {
     const targetSocket = Array.from(activeUsers.entries()).find(([id, u]) => u.id == targetUserId);
-    if (targetSocket) io.to(targetSocket[0]).emit('incomingCall', { from: socket.user });
+    if (targetSocket) {
+      io.to(targetSocket[0]).emit('incomingCall', { from: socket.user });
+    }
   });
 
   socket.on('disconnect', () => {
