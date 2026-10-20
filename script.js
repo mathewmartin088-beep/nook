@@ -3,7 +3,30 @@ let currentUser = JSON.parse(localStorage.getItem('nook_user'));
 let currentNook = null;
 let socket;
 
-// Only connect socket if we have a token!
+// --- QUICK SWITCH LOGIN UI ---
+function loadRecentAccounts() {
+  const recent = JSON.parse(localStorage.getItem('recent_accounts') || '[]');
+  const area = document.getElementById('quick-switch-area');
+  const list = document.getElementById('recent-accounts-list');
+  
+  if (recent.length > 0) {
+    area.style.display = 'block';
+    list.innerHTML = '';
+    recent.forEach(acc => {
+      const btn = document.createElement('button');
+      btn.className = 'recent-account-btn';
+      btn.innerHTML = `<span>${acc.username}</span> <span style="opacity:0.5">Switch</span>`;
+      btn.onclick = () => {
+        document.getElementById('auth-username').value = acc.username;
+        document.getElementById('auth-password').focus();
+      };
+      list.appendChild(btn);
+    });
+  }
+}
+loadRecentAccounts();
+
+// --- SOCKET CONNECTION ---
 if (token) {
   socket = io({ auth: { token } });
   
@@ -71,9 +94,36 @@ async function auth(action) {
 if (token) {
   document.getElementById('auth-screen').classList.remove('active');
   document.getElementById('app-screen').classList.add('active');
+  
+  // Setup User Profile UI
+  document.getElementById('display-username').innerText = currentUser.username;
+  document.getElementById('user-avatar-letter').innerText = currentUser.username.charAt(0).toUpperCase();
   if (currentUser.is_dev) document.getElementById('dev-settings-btn').style.display = 'flex';
+  
   loadDonateLink();
 }
+
+// --- LOGOUT & SWITCH ACCOUNT ---
+document.getElementById('logout-btn').onclick = () => {
+  localStorage.removeItem('nook_token');
+  localStorage.removeItem('nook_user');
+  location.reload();
+};
+
+document.getElementById('switch-account-btn').onclick = () => {
+  // Save current user to recent accounts for quick switching later
+  let recent = JSON.parse(localStorage.getItem('recent_accounts') || '[]');
+  recent = recent.filter(u => u.username !== currentUser.username); // prevent duplicates
+  recent.unshift({ username: currentUser.username }); // add to front
+  if (recent.length > 3) recent.pop(); // keep only last 3
+  
+  localStorage.setItem('recent_accounts', JSON.stringify(recent));
+  
+  // Now log out
+  localStorage.removeItem('nook_token');
+  localStorage.removeItem('nook_user');
+  location.reload();
+};
 
 // --- NAVIGATION ---
 document.querySelectorAll('.nav-icon').forEach(icon => {
