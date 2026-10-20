@@ -24,7 +24,7 @@ if (fs.existsSync(DB_FILE)) {
   // Seed "mathew" as the dev user
   const hash = bcrypt.hashSync('devpassword123', 10);
   db.users.push({ id: 1, username: 'mathew', password: hash, is_dev: 1 });
-  db.settings.push({ key: 'donate_link', value: 'https://ko-fi.com/default' });
+  db.settings.push({ key: 'donate_link', value: 'https://sociabuzz.com/donationnk/tribe' });
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
