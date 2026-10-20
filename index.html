@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nook</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-box">
+      <h1>nook</h1>
+      <p>your cozy corner of the internet</p>
+      
+      <!-- Quick Switch Area -->
+      <div id="quick-switch-area" style="display:none; margin-bottom: 15px; text-align: left;">
+        <p class="subtext" style="margin-bottom: 8px;">Welcome back!</p>
+        <div id="recent-accounts-list"></div>
+      </div>
+
+      <input type="text" id="auth-username" placeholder="username">
+      <input type="password" id="auth-password" placeholder="password">
+      <div class="auth-btns">
+        <button id="login-btn">login</button>
+        <button id="register-btn" class="secondary">register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP SCREEN -->
+  <div id="app-screen" class="screen">
+    <!-- Far Left Nav (Minimalist SVGs) -->
+    <nav class="nav-bar">
+      <div class="nav-icon active" data-view="friends" title="Friends">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="nav-icon" data-view="nooks" title="Nooks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-icon" data-view="settings" id="dev-settings-btn" style="display:none;" title="Dev Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      </div>
+    </nav>
+
+    <!-- Second Column (Lists & User Profile) -->
+    <aside class="sidebar">
+      <div class="sidebar-content">
+        <div id="friends-view" class="sidebar-view active">
+          <h3>Friends</h3>
+          <input type="text" id="add-friend-input" placeholder="add friend by name...">
+          <button id="add-friend-btn">Send Request</button>
+          <ul id="friends-list"></ul>
+        </div>
+        <div id="nooks-view" class="sidebar-view">
+          <h3>Nooks (Groups)</h3>
+          <input type="text" id="create-nook-input" placeholder="create a nook...">
+          <button id="create-nook-btn">Create</button>
+          <ul id="nooks-list"></ul>
+        </div>
+        <div id="settings-view" class="sidebar-view">
+          <h3>Dev Settings</h3>
+          <p class="subtext">Update Donate Link</p>
+          <input type="text" id="donate-link-input" placeholder="https://...">
+          <button id="update-donate-btn">Update Link</button>
+        </div>
+      </div>
+
+      <!-- User Profile Bar (Bottom) -->
+      <div class="user-profile">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar-letter">U</div>
+          <div class="user-details">
+            <span class="user-name" id="display-username">User</span>
+            <span class="user-status">Online</span>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="icon-btn" id="switch-account-btn" title="Switch Account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </button>
+          <button class="icon-btn" id="logout-btn" title="Logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content">
+      <header class="content-header">
+        <h2 id="current-view-title">Friends</h2>
+        <button id="call-btn" class="icon-btn" title="Call">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+      </header>
+      <div id="messages-area">
+        <p class="placeholder-text">Select a friend or nook to start chatting.</p>
+      </div>
+      <form id="message-form" style="display:none;">
+        <input type="text" id="message-input" placeholder="Send a cozy message...">
+        <button type="submit">Send</button>
+      </form>
+    </main>
+
+    <!-- Right Widget -->
+    <aside class="widget-bar">
+      <div class="donate-widget">
+        <h4>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px; height:16px; vertical-align: middle; margin-right: 6px;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Support Nook
+        </h4>
+        <p>Keep the nook cozy!</p>
+        <a id="donate-link" href="#" target="_blank">Donate Here</a>
+      </div>
+      <div class="online-users">
+        <h4>Online</h4>
+        <ul id="online-list"></ul>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
